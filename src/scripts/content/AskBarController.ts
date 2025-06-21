@@ -13,6 +13,8 @@ export class AskBarController {
   private targetKeybindString = '';
   private keypressDisposer: (() => void) | null = null;
   private onAskBarOpenCallback: (() => void) | null = null;
+  private storageListener: ((changes: any, area: string) => void) | null = null;
+  private isDestroyed = false;
 
   constructor(private tabManager: TabConversationManager) {}
 
@@ -27,9 +29,17 @@ export class AskBarController {
   }
 
   cleanup(): void {
+    if (this.isDestroyed) return;
+    this.isDestroyed = true;
+    
     this.hide();
     MessageBus.cleanup();
     this.keypressDisposer?.();
+    
+    if (this.storageListener) {
+      browser.storage.onChanged.removeListener(this.storageListener);
+      this.storageListener = null;
+    }
   }
 
   /** Public accessor for Ask Bar visibility state */
@@ -113,8 +123,13 @@ export class AskBarController {
   }
 
   private setupStorageListener(): void {
-    browser.storage.onChanged.addListener((changes, area) => {
-      if (area !== 'local') return;
+    // Remove existing listener if any
+    if (this.storageListener) {
+      browser.storage.onChanged.removeListener(this.storageListener);
+    }
+    
+    this.storageListener = (changes, area) => {
+      if (this.isDestroyed || area !== 'local') return;
       if (changes.features) {
         const newFeatures = changes.features.newValue as any;
         if (newFeatures?.askBar) {
@@ -127,7 +142,9 @@ export class AskBarController {
           }
         }
       }
-    });
+    };
+    
+    browser.storage.onChanged.addListener(this.storageListener);
   }
 
   private setupMessageHandlers(): void {

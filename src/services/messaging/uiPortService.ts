@@ -43,8 +43,13 @@ export class UiPortService {
     resolve: (value: any) => void;
     reject: (error: Error) => void;
     type: string;
+    timeout?: NodeJS.Timeout;
   }>();
   private streamingCallbacks = new Map<string, StreamingCallbacks>();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000;
+  private isDestroyed = false;
 
   private constructor() {
     this.connect();
@@ -148,6 +153,9 @@ export class UiPortService {
   private handleContentResponse(message: UiContentResponseMsg): void {
     const request = this.pendingRequests.get(message.requestId);
     if (request && request.type === 'GET_CONTENT') {
+      if (request.timeout) {
+        clearTimeout(request.timeout);
+      }
       request.resolve(message.pages);
       this.pendingRequests.delete(message.requestId);
     }
@@ -156,6 +164,9 @@ export class UiPortService {
   private handleTabsResponse(message: UiTabsResponseMsg): void {
     const request = this.pendingRequests.get(message.requestId);
     if (request && request.type === 'LIST_TABS') {
+      if (request.timeout) {
+        clearTimeout(request.timeout);
+      }
       request.resolve(message.tabs);
       this.pendingRequests.delete(message.requestId);
     }
@@ -211,6 +222,9 @@ export class UiPortService {
 
   private rejectAllPendingRequests(error: Error): void {
     this.pendingRequests.forEach(request => {
+      if (request.timeout) {
+        clearTimeout(request.timeout);
+      }
       request.reject(error);
     });
     this.pendingRequests.clear();
@@ -272,6 +286,10 @@ export class UiPortService {
    * Get content from specific tabs
    */
   async getContent(tabIds: number[]): Promise<PageContent[]> {
+    if (!this.isConnected || !this.port) {
+      throw new Error('Not connected to background script');
+    }
+
     const requestId = this.generateRequestId();
     
     const message: UiGetContentMsg = {
@@ -281,11 +299,25 @@ export class UiPortService {
     };
 
     return new Promise((resolve, reject) => {
-      this.pendingRequests.set(requestId, { resolve, reject, type: 'GET_CONTENT' });
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(requestId);
+        reject(new Error('Content request timed out'));
+      }, 10000); // 10 second timeout
+
+      this.pendingRequests.set(requestId, { 
+        resolve, 
+        reject: (error: Error) => {
+          clearTimeout(timeout);
+          reject(error);
+        }, 
+        type: 'GET_CONTENT',
+        timeout
+      });
       
       try {
         this.sendMessage(message);
       } catch (error) {
+        clearTimeout(timeout);
         this.pendingRequests.delete(requestId);
         reject(error);
       }

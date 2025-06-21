@@ -7,6 +7,9 @@ export { default as ChatInput } from './ChatInput';
 export { TabSelector } from './TabSelector';
 export { TabMentionInput } from './TabMentionInput';
 
+// Error boundaries
+export { ErrorBoundary, ChatErrorBoundary, UIErrorBoundary, withErrorBoundary } from './ErrorBoundary';
+
 // Hooks
 export { default as useCopyMessage } from './hooks/useCopyMessage';
 export { default as useConversationStorage } from './hooks/useConversationStorage';

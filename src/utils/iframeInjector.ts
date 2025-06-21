@@ -1,26 +1,14 @@
 import { ContentScraperService } from '../services/contentScraper';
 import { Message } from '../services/storage';
+import { InjectionConfig, InjectionSettings, BoundsInfo, IframeInitData } from '../types/settings';
 
-export interface InjectionConfig {
-  iframeUrl: string;
-  containerId: string;
-  settings: any;
-  position?: string;
-  existingConversation?: {
-    id: string | null;
-    messages: Message[];
-    url: string;
-    title: string;
-    createdAt: number;
-    updatedAt: number;
-  } | null;
-}
+export { InjectionConfig } from '../types/settings';
 
 export interface IframeInstance {
   iframe: HTMLIFrameElement;
   cleanup: () => void;
   remove: () => void;
-  sendMessage: (message: any) => void;
+  sendMessage: (message: Record<string, unknown>) => void;
 }
 
 export class IframeInjector {
@@ -62,7 +50,7 @@ export class IframeInjector {
       iframe,
       cleanup: pointerEventsManager.cleanup,
       remove: () => this.removeInstance(containerId),
-      sendMessage: (message: any) => this.sendMessageToIframe(iframe, message)
+      sendMessage: (message: Record<string, unknown>) => this.sendMessageToIframe(iframe, message)
     };
     
     this.instances.set(containerId, instance);
@@ -102,7 +90,7 @@ export class IframeInjector {
   
   private static createPointerEventsManager(iframe: HTMLIFrameElement) {
     let isPointerEventsEnabled = false;
-    let askBarBounds: any = null;
+    let askBarBounds: BoundsInfo | null = null;
     
     const togglePointerEvents = (enable: boolean) => {
       if (enable !== isPointerEventsEnabled) {
@@ -152,12 +140,7 @@ export class IframeInjector {
     };
   }
   
-  private static initializeIframe(iframe: HTMLIFrameElement, data: {
-    existingConversation: any;
-    position: string;
-    url: string;
-    title: string;
-  }): void {
+  private static initializeIframe(iframe: HTMLIFrameElement, data: IframeInitData): void {
     try {
       console.log('Sol: Initializing iframe with content:', {
         hasScrapedContent: false,
@@ -185,7 +168,7 @@ export class IframeInjector {
     }
   }
   
-  private static sendMessageToIframe(iframe: HTMLIFrameElement, message: any): void {
+  private static sendMessageToIframe(iframe: HTMLIFrameElement, message: Record<string, unknown>): void {
     try {
       iframe.contentWindow?.postMessage(message, '*');
     } catch (error) {

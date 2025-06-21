@@ -16,6 +16,7 @@ import { Label } from '@src/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@src/components/ui/select';
 import { Switch } from '@src/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@src/components/ui/tabs';
+import { ErrorBoundary, UIErrorBoundary } from '@src/components/ErrorBoundary';
 import logo from '@assets/img/logo.svg';
 
 export default function Dashboard() {

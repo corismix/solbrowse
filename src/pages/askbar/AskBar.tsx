@@ -10,6 +10,7 @@ import {
 import { useSimpleChat } from '@src/components/hooks/useSimpleChat';
 import { UiPortService, TabInfo } from '@src/services/messaging/uiPortService';
 import { get } from '@src/services/storage';
+import { ChatErrorBoundary, UIErrorBoundary } from '@src/components/ErrorBoundary';
 import TabChipRow from './components/TabChipRow';
 import InputArea from './components/InputArea';
 
@@ -142,6 +143,16 @@ export const AskBar: React.FC<AskBarProps> = ({
   // Effects
   useEffect(() => {
     setIsVisible(true);
+
+    // Auto-focus the input when AskBar becomes visible
+    const focusInput = () => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    };
+
+    // Focus after animation completes
+    setTimeout(focusInput, 300);
 
     // Load debug flag from storage once
     (async () => {
@@ -561,6 +572,18 @@ export const AskBar: React.FC<AskBarProps> = ({
     }
   };
 
+  // Global ESC key handler
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
   // Listen for context response to copy to clipboard
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -634,12 +657,14 @@ export const AskBar: React.FC<AskBarProps> = ({
 
           {/* Conversation Messages */}
           <div className="px-[14px] pb-2 max-h-[400px] overflow-y-auto">
-            <ConversationList
-              messages={conversationHistory}
-              copiedMessageIndex={copiedMessageIndex}
-              onCopyMessage={handleCopyMessage}
-              isStreaming={chatState.isStreaming}
-            />
+            <ChatErrorBoundary>
+              <ConversationList
+                messages={conversationHistory}
+                copiedMessageIndex={copiedMessageIndex}
+                onCopyMessage={handleCopyMessage}
+                isStreaming={chatState.isStreaming}
+              />
+            </ChatErrorBoundary>
           </div>
 
           {/* Input Area within conversation container */}
@@ -653,7 +678,9 @@ export const AskBar: React.FC<AskBarProps> = ({
               }}
             >
               {/* Tab Chips */}
-              <TabChipRow tabs={selectedTabChips} onRemove={handleTabRemove} />
+              <UIErrorBoundary>
+                <TabChipRow tabs={selectedTabChips} onRemove={handleTabRemove} />
+              </UIErrorBoundary>
 
               {/* Input & buttons */}
               <div
@@ -664,22 +691,24 @@ export const AskBar: React.FC<AskBarProps> = ({
                   paddingBottom: '14px'
                 }}
               >
-                <InputArea
-                  input={input}
-                  onInputChange={handleInputChange}
-                  onInputKeyDown={handleInputKeyDown}
-                  inputRef={inputRef}
-                  showDropdown={showDropdown}
-                  filteredTabs={filteredTabs}
-                  dropdownSelectedIndex={dropdownSelectedIndex}
-                  insertTabMention={insertTabMention as any}
-                  dropdownRef={dropdownRef}
-                  setDropdownSelectedIndex={setDropdownSelectedIndex}
-                  truncateTitle={truncateTitle}
-                  onClose={handleClose}
-            onSubmit={handleSubmit}
-                  isStreaming={chatState.isStreaming}
-                />
+                <UIErrorBoundary>
+                  <InputArea
+                    input={input}
+                    onInputChange={handleInputChange}
+                    onInputKeyDown={handleInputKeyDown}
+                    inputRef={inputRef}
+                    showDropdown={showDropdown}
+                    filteredTabs={filteredTabs}
+                    dropdownSelectedIndex={dropdownSelectedIndex}
+                    insertTabMention={insertTabMention as any}
+                    dropdownRef={dropdownRef}
+                    setDropdownSelectedIndex={setDropdownSelectedIndex}
+                    truncateTitle={truncateTitle}
+                    onClose={handleClose}
+                    onSubmit={handleSubmit}
+                    isStreaming={chatState.isStreaming}
+                  />
+                </UIErrorBoundary>
           {chatState.error && (
                   <div className="mt-2 text-red-600 text-sm">{chatState.error}</div>
                 )}
